@@ -1,0 +1,108 @@
+---
+import { profile } from "../data/profile";
+import { links } from "../data/links";
+
+const year = new Date().getUTCFullYear();
+const [user, domain] = profile.email.split("@");
+---
+
+<footer class="colophon">
+  <div class="row">
+    <p class="where">
+      <span>{profile.locality}</span>
+      <span class="sep" aria-hidden="true">·</span>
+      <span>{profile.country}</span>
+    </p>
+    <nav class="links" aria-label="Elsewhere">
+      <a data-user={user} data-domain={domain} href="#" data-mail>Email</a>
+      {links.map((link) => (
+        <a href={link.href} rel="me noopener noreferrer" target="_blank">{link.label}</a>
+      ))}
+      <a href="/rss.xml">RSS</a>
+      <a href="/play">Arcade</a>
+    </nav>
+  </div>
+  <p class="fine">&copy; {year} {profile.name} &middot; Hand-built, statically served, mildly over-engineered.</p>
+</footer>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    document.querySelectorAll<HTMLAnchorElement>("a[data-mail]").forEach((el) => {
+      const { user, domain } = el.dataset;
+      if (user && domain) el.href = `mailto:${user}@${domain}`;
+    });
+  });
+</script>
+
+<style>
+  .colophon {
+    margin-top: auto;
+    padding-top: 1.6rem;
+    padding-inline: 1rem;
+    padding-bottom: calc(2.25rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--separator);
+    display: grid;
+    justify-items: center;
+    gap: 0.9rem;
+    text-align: center;
+  }
+
+  .row {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 0.9rem;
+    width: 100%;
+  }
+
+  .where {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--faint);
+  }
+
+  .sep { line-height: 1; }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.15rem;
+    width: 100%;
+  }
+
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--r-pill);
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+
+  .links a:hover {
+    background: var(--fill);
+    color: var(--ink);
+  }
+
+  .fine {
+    font-size: 0.72rem;
+    color: var(--faint);
+  }
+
+  @media (pointer: coarse) {
+    .links a { min-height: 44px; }
+  }
+
+  @media (max-width: 34rem) {
+    .links a { flex: 1; min-width: 0; padding-inline: 0.4rem; }
+  }
+</style>

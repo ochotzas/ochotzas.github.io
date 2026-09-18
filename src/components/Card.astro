@@ -1,0 +1,19 @@
+---
+interface Props { class?: string; flush?: boolean }
+const { class: klass, flush = false } = Astro.props;
+---
+
+<div class:list={["card", flush && "flush", klass]}>
+  <slot />
+</div>
+
+<style>
+  .card {
+    background: var(--card);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+
+  .flush { padding: 0.35rem 0; }
+</style>

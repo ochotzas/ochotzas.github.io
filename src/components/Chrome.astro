@@ -1,0 +1,418 @@
+---
+import { Image } from "astro:assets";
+import ThemeToggle from "./ThemeToggle.astro";
+import avatar from "../assets/avatar.png";
+import { profile } from "../data/profile";
+
+const path = Astro.url.pathname.replace(/index\.html$/, "").replace(/(.)\/+$/, "$1") || "/";
+const onWriting = path.startsWith("/notes");
+const onContact = path.startsWith("/contact");
+const onHome = !onWriting && !onContact;
+
+const nav = [
+  { label: "Work", href: "/#work", match: "/", current: onHome },
+  { label: "Writing", href: "/notes", match: "/notes", current: onWriting },
+  { label: "Contact", href: "/contact", match: "/contact", current: onContact },
+];
+---
+
+<div class="chrome" transition:persist="site-header">
+  <div class="inner">
+    <a class="brand" href="/" data-back>
+      <Image class="mark" src={avatar} alt="" width={28} height={28} densities={[1, 2, 3]} />
+      <span class="who">{profile.name}</span>
+    </a>
+
+    <nav class="nav" aria-label="Sections">
+      {
+        nav.map((item) => (
+          <a href={item.href} data-match={item.match} aria-current={item.current ? "page" : undefined}>
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="tools">
+      <ThemeToggle />
+      <button class="menu-btn" type="button" data-menu aria-expanded="false" aria-controls="site-menu" aria-label="Menu">
+        <span class="bars" aria-hidden="true"><span /><span /></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="menu" id="site-menu" hidden transition:persist="site-menu">
+  <nav class="menu-nav" aria-label="Sections">
+    {
+      nav.map((item) => (
+        <a href={item.href} data-match={item.match} aria-current={item.current ? "page" : undefined}>
+          <span>{item.label}</span>
+          <span class="chev" aria-hidden="true">›</span>
+        </a>
+      ))
+    }
+  </nav>
+  <p class="menu-foot">{profile.role}</p>
+</div>
+
+<script>
+  let closeTimer = 0;
+
+  const setMenu = (open: boolean) => {
+    const menu = document.getElementById("site-menu");
+    const button = document.querySelector<HTMLButtonElement>("[data-menu]");
+    if (!menu || !button) return;
+
+    const wasOpen = menu.dataset.open !== undefined;
+
+    window.clearTimeout(closeTimer);
+    button.setAttribute("aria-expanded", String(open));
+
+    if (open) {
+      document.documentElement.classList.add("menu-open");
+      menu.hidden = false;
+      requestAnimationFrame(() => (menu.dataset.open = ""));
+      return;
+    }
+
+    delete menu.dataset.open;
+
+    if (!wasOpen) {
+      document.documentElement.classList.remove("menu-open");
+      menu.hidden = true;
+      return;
+    }
+
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    closeTimer = window.setTimeout(() => {
+      document.documentElement.classList.remove("menu-open");
+      menu.hidden = true;
+    }, calm ? 0 : 440);
+  };
+
+  const activeTheme = () =>
+    document.documentElement.dataset.theme === "dark" ||
+    (!document.documentElement.dataset.theme &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ? "dark"
+      : "light";
+
+  const paintToggle = () => {
+    const pressed = String(activeTheme() === "dark");
+    document
+      .querySelectorAll<HTMLElement>("[data-theme-toggle]")
+      .forEach((el) => el.setAttribute("aria-pressed", pressed));
+  };
+
+  const switchTheme = () => {
+    const next = activeTheme() === "dark" ? "light" : "dark";
+    const root = document.documentElement;
+
+    root.classList.add("theme-switching");
+    root.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    document
+      .querySelector('meta[name="theme-color"]:not([media])')
+      ?.setAttribute("content", next === "dark" ? "#000000" : "#f2f2f4");
+    paintToggle();
+
+    window.setTimeout(() => root.classList.remove("theme-switching"), 360);
+  };
+
+  const sync = () => {
+    const path =
+      location.pathname.replace(/index\.html$/, "").replace(/(.)\/+$/, "$1") || "/";
+    document.querySelectorAll<HTMLElement>("[data-match]").forEach((el) => {
+      const match = el.dataset.match ?? "";
+      const active = match === "/" ? path === "/" : path.startsWith(match);
+      if (active) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    });
+  };
+
+  document.addEventListener("astro:page-load", () => {
+    sync();
+    setMenu(false);
+    paintToggle();
+  });
+
+  paintToggle();
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("[data-theme-toggle]")) {
+      switchTheme();
+      return;
+    }
+
+    const button = target?.closest<HTMLElement>("[data-menu]");
+    if (button) {
+      setMenu(button.getAttribute("aria-expanded") !== "true");
+      return;
+    }
+    if (target?.closest("#site-menu a")) setMenu(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setMenu(false);
+  });
+</script>
+
+<style>
+  .chrome {
+    view-transition-name: header;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--glass);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--hairline);
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .chrome {
+      border-bottom-color: transparent;
+      animation: chrome-hairline linear both;
+      animation-timeline: scroll();
+      animation-range: 0 64px;
+    }
+  }
+
+  @keyframes chrome-hairline {
+    to { border-bottom-color: var(--hairline); }
+  }
+
+  .inner {
+    max-width: 52rem;
+    margin-inline: auto;
+    padding: 0.5rem var(--gutter);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex: none;
+    border-radius: var(--r-pill);
+  }
+
+  .mark {
+    border-radius: var(--r-pill);
+    box-shadow: 0 0 0 1px var(--separator);
+    object-fit: cover;
+    display: block;
+  }
+
+  .who {
+    font-size: var(--step--1);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    white-space: nowrap;
+  }
+
+  .nav {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .nav a {
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--r-pill);
+    white-space: nowrap;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+
+  .nav a:hover { background: var(--fill); color: var(--ink); }
+  .nav a[aria-current="page"] { background: var(--fill); color: var(--ink); }
+
+  .inner :global(.toggle) {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: var(--fill);
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+
+  .inner :global(.toggle:hover) { background: var(--separator); color: var(--ink); }
+
+  .inner :global(.toggle .glyph) { display: inline-flex; }
+  .inner :global(.toggle .moon) { display: none; }
+
+  :root[data-theme="dark"] .inner :global(.toggle .sun) { display: none; }
+  :root[data-theme="dark"] .inner :global(.toggle .moon) { display: inline-flex; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .inner :global(.toggle .sun) { display: none; }
+    :root:not([data-theme="light"]) .inner :global(.toggle .moon) { display: inline-flex; }
+  }
+
+  .tools { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+
+  .menu-btn { display: none; }
+
+  .menu { display: none; }
+
+  @media (max-width: 38rem) {
+    .nav { display: none; }
+
+    .inner {
+      justify-content: space-between;
+      padding-block: 0.4rem;
+    }
+
+    .brand { min-height: 44px; }
+    .mark { width: 32px; height: 32px; }
+    .inner :global(.toggle) { width: 44px; height: 44px; }
+
+    .menu-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 0;
+      border-radius: var(--r-pill);
+      background: var(--fill);
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s var(--ease-exit) 0.29s, color 0.15s var(--ease-exit) 0.29s;
+    }
+
+    .menu-btn[aria-expanded="true"] {
+      background: var(--ink);
+      color: var(--canvas);
+      transition: background 0.15s var(--ease), color 0.15s var(--ease);
+    }
+
+    .bars {
+      display: grid;
+      gap: 4px;
+      width: 17px;
+    }
+
+    .bars span {
+      display: block;
+      height: 1.8px;
+      border-radius: var(--r-pill);
+      background: currentColor;
+      transition: transform 0.28s var(--ease-exit) 0.16s;
+    }
+
+    .menu-btn[aria-expanded="true"] .bars span {
+      transition: transform 0.28s var(--ease);
+    }
+
+    .menu-btn[aria-expanded="true"] .bars span:first-child { transform: translateY(2.9px) rotate(45deg); }
+    .menu-btn[aria-expanded="true"] .bars span:last-child { transform: translateY(-2.9px) rotate(-45deg); }
+
+    .menu[hidden] { display: none; }
+
+    .menu {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      align-content: start;
+      gap: 0.25rem;
+      padding: calc(env(safe-area-inset-top, 0px) + 4.5rem) var(--gutter)
+        calc(env(safe-area-inset-bottom, 0px) + 2rem);
+      background: var(--canvas);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.26s var(--ease-exit) 0.18s;
+    }
+
+    .menu[data-open] {
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.26s var(--ease);
+    }
+
+    .menu-nav { display: grid; }
+
+    .menu-nav a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.05rem 0.15rem;
+      font-size: var(--step-2);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      border-bottom: 1px solid var(--separator);
+      color: var(--muted);
+      opacity: 0;
+      translate: 0 0.5rem;
+      transition: opacity 0.3s var(--ease-exit), translate 0.3s var(--ease-exit),
+        color 0.15s var(--ease);
+      transition-delay: 0.14s, 0.14s, 0s;
+    }
+
+    .menu-nav a:nth-child(2) { transition-delay: 0.09s, 0.09s, 0s; }
+    .menu-nav a:nth-child(3) { transition-delay: 0.04s, 0.04s, 0s; }
+
+    .menu-nav a[aria-current="page"] { color: var(--ink); }
+    .menu-nav a:active { color: var(--ink); }
+
+    .menu[data-open] .menu-nav a {
+      opacity: 1;
+      translate: 0 0;
+      transition: opacity 0.3s var(--ease), translate 0.3s var(--ease), color 0.15s var(--ease);
+      transition-delay: 0s;
+    }
+
+    .menu[data-open] .menu-nav a:nth-child(2) { transition-delay: 0.05s, 0.05s, 0s; }
+    .menu[data-open] .menu-nav a:nth-child(3) { transition-delay: 0.1s, 0.1s, 0s; }
+
+    .menu-nav .chev { font-size: 1.5rem; color: var(--faint); }
+
+    .menu-foot {
+      margin-top: 1.25rem;
+      font-size: var(--step--1);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--faint);
+      opacity: 0;
+      transition: opacity 0.3s var(--ease-exit);
+    }
+
+    .menu[data-open] .menu-foot {
+      opacity: 1;
+      transition: opacity 0.3s var(--ease) 0.14s;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu,
+    .menu-nav a,
+    .menu-foot,
+    .menu-btn,
+    .bars span { transition: none; }
+  }
+  }
+</style>

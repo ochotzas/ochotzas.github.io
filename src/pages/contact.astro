@@ -1,0 +1,174 @@
+---
+import Base from "../layouts/Base.astro";
+import Ledger from "../components/Ledger.astro";
+import Card from "../components/Card.astro";
+import Section from "../components/Section.astro";
+import Colophon from "../components/Colophon.astro";
+import { Image } from "astro:assets";
+import avatar from "../assets/avatar.png";
+import { profile } from "../data/profile";
+import { links } from "../data/links";
+
+const [user, domain] = profile.email.split("@");
+
+const details = [
+  { label: "Based", value: `${profile.locality} · ${profile.country}` },
+  { label: "Availability", value: profile.available ?? "Ask me" },
+  { label: "Replies", value: "Within a day. Sooner if it's interesting" },
+  { label: "CV", value: "Ask and I'll send it over" },
+];
+---
+
+<Base
+  title="Say Hello"
+  description={`Get in touch with ${profile.name} — email, GitHub and LinkedIn.`}
+  ogRoute="contact"
+  breadcrumbs={[
+    { name: "Home", path: "/" },
+    { name: "Contact", path: "/contact" },
+  ]}
+>
+  <Ledger>
+    <Card>
+      <div class="hero">
+        <Image class="face" src={avatar} alt={profile.name} width={72} height={72} densities={[1, 2, 3]} />
+        <h1 class="title">Say Hello</h1>
+        <p class="lead">
+          Something strange to build, a backend that needs rescuing, or an opinion about prompt
+          tooling you'd like to test on me? It all lands in the same inbox, and I read all of it.
+        </p>
+        <a class="cta" data-user={user} data-domain={domain} href="#" data-mail>
+          {user}<span aria-hidden="true">&#64;</span>{domain}
+        </a>
+      </div>
+    </Card>
+
+    <Section title="Elsewhere">
+      <ul>
+        {
+          links.map((link) => (
+            <li class="row">
+              <a class="hit" href={link.href} rel="me noopener noreferrer" target="_blank" aria-label={link.label} />
+              <span class="label">{link.label}</span>
+              <span class="value">{link.handle}</span>
+              <span class="chev" aria-hidden="true">›</span>
+            </li>
+          ))
+        }
+      </ul>
+    </Section>
+
+    <Section title="Details">
+      <ul>
+        {
+          details.map((item) => (
+            <li class="row static">
+              <span class="label">{item.label}</span>
+              <span class="value">{item.value}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </Section>
+
+    <Colophon />
+  </Ledger>
+</Base>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    document.querySelectorAll<HTMLAnchorElement>("a[data-mail]").forEach((el) => {
+      const { user, domain } = el.dataset;
+      if (user && domain) el.href = `mailto:${user}@${domain}`;
+    });
+  });
+</script>
+
+<style>
+  .hero {
+    padding: clamp(1.75rem, 1rem + 3vw, 2.75rem) 1.25rem;
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: 0.6rem;
+  }
+
+  .face {
+    border-radius: var(--r-pill);
+    box-shadow: 0 0 0 1px var(--separator);
+    object-fit: cover;
+  }
+
+  .title {
+    font-size: var(--step-2);
+    font-weight: 800;
+    letter-spacing: -0.032em;
+    line-height: 1.1;
+  }
+
+  .lead {
+    color: var(--muted);
+    max-width: 44ch;
+    text-wrap: pretty;
+  }
+
+  .cta {
+    margin-top: 0.5rem;
+    font-weight: 600;
+    background: var(--ink);
+    color: var(--canvas);
+    padding: 0.7rem 1.4rem;
+    border-radius: var(--r-pill);
+    overflow-wrap: anywhere;
+    transition: opacity 0.15s var(--ease);
+  }
+
+  .cta:hover { opacity: 0.85; }
+
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.15rem;
+    transition: background 0.15s var(--ease);
+  }
+
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1.15rem;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  .hit { position: absolute; inset: 0; z-index: 1; }
+
+  .row:has(.hit:hover),
+  .row:has(.hit:focus-visible) { background: var(--fill); }
+  .row:has(.hit:hover) .chev { transform: translateX(3px); }
+  .row:has(.hit:focus-visible) { outline: 2.5px solid var(--ink); outline-offset: -3px; border-radius: var(--r-sm); }
+
+  .label { font-weight: 600; flex: none; }
+
+  .value {
+    margin-left: auto;
+    color: var(--muted);
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .chev {
+    flex: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--faint);
+    transition: transform 0.2s var(--ease);
+  }
+
+  @media (pointer: coarse) {
+    .row { min-height: 44px; }
+  }
+</style>

@@ -1,0 +1,65 @@
+---
+title: "The Value Of A Closed Feature Request"
+summary: "My library has a page listing what it will never do. It's the most useful page in the docs, and it's the reason people can adopt it."
+published: 2026-08-18
+tags: ["design", "open-source", "llm"]
+draft: false
+---
+
+There is a page in my library's documentation titled *Scope*, and most of it is a table of things the library does not do. Tool calling. Agent loops. Conversation memory. Retrieval and RAG. Fine-tuning. Each row has a second column pointing at what to use instead.
+
+Feature requests for that table get closed with a link to it. Politely, quickly, and without a debate about the roadmap.
+
+This reads as unfriendly if you've just filed one. It's the reason the thing is usable.
+
+## What "we'll consider it" costs
+
+An open request is not neutral. It sits in the tracker as an implied promise, and it shapes decisions before anyone writes a line of it.
+
+You start leaving hooks — an abstraction here that would make tool calling easier later, a parameter there you don't need yet. Each one is a real cost paid today against a feature that may never exist. And because the API is public, those hooks freeze at 1.0 whether or not the feature ever lands.
+
+Meanwhile the person who filed it waits. A year later they've either worked around it or left, and the honest answer was available on day one.
+
+## The narrow thing is the valuable thing
+
+The particular temptation for a prompt library is to grow into an agent framework. It's adjacent, it's where the attention is, and every third issue asks for it.
+
+But agent frameworks are large, they move fast, and they disagree with each other about fundamentals. A prompt library that also tried to be one would be worse at both, and it would inherit its abstractions from whichever framework it happened to imitate.
+
+Whereas the narrow job — prompts as versioned, lintable, testable data — composes with *all* of them, precisely because it competes with none of them. Someone on LangGraph can adopt it tomorrow. That's not a consolation prize for staying small; it's the entire distribution strategy.
+
+## A boundary needs an exit
+
+The reason a hard boundary isn't hostile is that it comes with a way out. If staying inside the lines is the only option, "out of scope" means "fork it".
+
+```python
+engine.client    # the real openai / anthropic / ollama client
+completion.raw   # the provider's own response object
+```
+
+Every engine exposes its underlying SDK client, every completion carries the raw provider response. So a tool-calling flow that starts from a managed prompt is one attribute access away:
+
+```python
+prompt = load_prompt("classify.yaml")
+messages = prompt.render_messages({"text": document})
+
+response = engine.client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": m.role, "content": m.content} for m in messages],
+    tools=my_tools,
+)
+```
+
+You keep the part I'm good at — the prompt as reviewed, fingerprinted, tested data — and do the agentic part with the tool built for it. Nothing to fork, nothing to wrap, no adapter layer that goes stale.
+
+That's what makes the closed issue fair. It isn't "no". It's "no, and here is the door, and it's already open".
+
+## Say it in writing
+
+The part I'd recommend to anyone maintaining something: put the list in the docs, not just in your head.
+
+An unwritten boundary gets relitigated in every issue thread and drifts a little each time, because saying no in person is harder than saying no on a page you wrote calmly six months ago. Written down, it's a decision. Undocumented, it's a mood.
+
+---
+
+[PromptKit](https://promptkit-core.ochotzas.com/)'s version of this page is [Scope](https://promptkit-core.ochotzas.com/scope/). It has not changed since 1.0, which is the point.

@@ -1,0 +1,181 @@
+:root {
+  --canvas: #f2f2f4;
+  --card: #ffffff;
+  --raised: #ffffff;
+  --ink: #000000;
+  --muted: #6e6e73;
+  --faint: #9a9aa0;
+  --separator: rgba(0, 0, 0, 0.08);
+  --hairline: rgba(0, 0, 0, 0.06);
+  --fill: rgba(0, 0, 0, 0.04);
+  --fill-solid: #e8e8ea;
+  --edge-shadow: rgba(0, 0, 0, 0.16);
+  --glass: rgba(242, 242, 244, 0.72);
+  --qr-ink: #000000;
+  --qr-plate: #ffffff;
+  --dock: rgba(255, 255, 255, 0.84);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.07), 0 18px 48px rgba(0, 0, 0, 0.09);
+
+  --text: "Plus Jakarta Sans Variable", "Jakarta Fallback", ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --step--1: clamp(0.75rem, 0.73rem + 0.1vw, 0.8rem);
+  --step-0: clamp(0.92rem, 0.89rem + 0.16vw, 1rem);
+  --step-1: clamp(1.05rem, 0.99rem + 0.3vw, 1.22rem);
+  --step-2: clamp(1.45rem, 1.2rem + 1.1vw, 2rem);
+  --step-3: clamp(2.1rem, 1.5rem + 2.8vw, 3.6rem);
+
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-pill: 999px;
+
+  --gutter: clamp(1rem, 0.6rem + 2vw, 2rem);
+  --measure: 46.85rem;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-exit: cubic-bezier(1, 0, 0.68, 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #000000;
+    --card: #1c1c1e;
+    --raised: #2c2c2e;
+    --ink: #ffffff;
+    --muted: #9b9ba1;
+    --faint: #6b6b70;
+    --separator: rgba(255, 255, 255, 0.1);
+    --hairline: rgba(255, 255, 255, 0.07);
+    --fill: rgba(255, 255, 255, 0.06);
+    --fill-solid: #0f0f0f;
+    --edge-shadow: rgba(0, 0, 0, 0.55);
+    --glass: rgba(0, 0, 0, 0.66);
+    --dock: rgba(28, 28, 30, 0.84);
+
+    --shadow-sm: none;
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --canvas: #000000;
+  --card: #1c1c1e;
+  --raised: #2c2c2e;
+  --ink: #ffffff;
+  --muted: #9b9ba1;
+  --faint: #6b6b70;
+  --separator: rgba(255, 255, 255, 0.1);
+  --hairline: rgba(255, 255, 255, 0.07);
+  --fill: rgba(255, 255, 255, 0.06);
+  --fill-solid: #0f0f0f;
+  --edge-shadow: rgba(0, 0, 0, 0.55);
+  --glass: rgba(0, 0, 0, 0.66);
+  --dock: rgba(28, 28, 30, 0.84);
+
+  --shadow-sm: none;
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light dark;
+  scrollbar-gutter: stable;
+}
+
+html:has(dialog[open]) { overflow-y: hidden; }
+
+a,
+button,
+summary,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2.5px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: var(--r-xs);
+}
+
+:is(h1, h2, h3, p, ul, ol, dl, dd, figure) { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+img { max-width: 100%; height: auto; display: block; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--step--1);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--fill);
+  padding: 0.22rem 0.65rem;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.chip-strong { color: var(--ink); }
+
+.chip-dot {
+  flex: none;
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: var(--r-pill);
+  background: currentColor;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(1px)) and (not (backdrop-filter: blur(1px))) {
+  .chrome,
+  .tabs {
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+
+html.menu-open { overflow-y: hidden; }

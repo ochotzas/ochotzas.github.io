@@ -1,0 +1,86 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Ledger from "../../components/Ledger.astro";
+import Card from "../../components/Card.astro";
+import NoteList from "../../components/NoteList.astro";
+import Colophon from "../../components/Colophon.astro";
+
+const notes = (await getCollection("notes", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.published.valueOf() - a.data.published.valueOf(),
+);
+
+const tags = [...new Set(notes.flatMap((note) => note.data.tags))].sort();
+const count = `${notes.length} ${notes.length === 1 ? "note" : "notes"}`;
+const tagCount = `${tags.length} ${tags.length === 1 ? "tag" : "tags"}`;
+---
+
+<Base
+  title="Stuff I Wrote"
+  description="Notes on backends, prompt tooling and AI infrastructure — the decisions that look small and are not."
+  ogRoute="notes"
+  breadcrumbs={[
+    { name: "Home", path: "/" },
+    { name: "Writing", path: "/notes" },
+  ]}
+>
+  <Ledger>
+    <header class="head">
+      <p class="meta">
+        <span>{count}</span>
+        <span class="sep" aria-hidden="true">·</span>
+        <span>{tagCount}</span>
+      </p>
+      <h1 class="title">Stuff I Wrote</h1>
+      <p class="lead">
+        Notes on backends, prompt tooling, and the small decisions that quietly decide everything
+        later. Mostly things I went looking for, didn't find, and had to work out the slow way.
+      </p>
+      {
+        tags.length > 0 && (
+          <ul class="tags">
+            {tags.map((tag) => (
+              <li class="chip">{tag}</li>
+            ))}
+          </ul>
+        )
+      }
+    </header>
+
+    <Card><NoteList notes={notes} /></Card>
+
+    <Colophon />
+  </Ledger>
+</Base>
+
+<style>
+  .head { display: grid; gap: 0.6rem; padding-inline: 0.25rem; }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .sep { color: var(--faint); }
+
+  .title {
+    font-size: var(--step-2);
+    font-weight: 800;
+    letter-spacing: -0.032em;
+    line-height: 1.12;
+  }
+
+  .lead {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: var(--measure);
+  }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.15rem; }
+
+</style>

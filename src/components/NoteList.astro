@@ -1,0 +1,117 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  notes: CollectionEntry<"notes">[];
+  empty?: string;
+}
+const { notes, empty = "Nothing yet. I'm probably making coffee." } = Astro.props;
+
+const fmt = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+---
+
+{
+  notes.length === 0 ? (
+    <p class="empty">{empty}</p>
+  ) : (
+    <ul class="rows">
+      {notes.map((note) => (
+        <li class="row">
+          <a class="hit" href={`/notes/${note.id}`} aria-label={note.data.title} />
+          <div class="body">
+            <div class="top">
+              <h3 class="title">{note.data.title}</h3>
+              <time class="date" datetime={note.data.published.toISOString()}>
+                {fmt.format(note.data.published)}
+              </time>
+            </div>
+            <p class="summary">{note.data.summary}</p>
+          </div>
+          <span class="chev" aria-hidden="true">›</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.15rem;
+    transition: background 0.15s var(--ease);
+  }
+
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1.15rem;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  .hit { position: absolute; inset: 0; z-index: 1; }
+
+  .row:has(.hit:hover),
+  .row:has(.hit:focus-visible) { background: var(--fill); }
+  .row:has(.hit:hover) .chev { transform: translateX(3px); }
+  .row:has(.hit:focus-visible) { outline: 2.5px solid var(--ink); outline-offset: -3px; border-radius: var(--r-sm); }
+
+  .body { flex: 1; min-width: 0; }
+
+  .top {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
+  .title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .date {
+    flex: none;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--faint);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary {
+    margin-top: 0.25rem;
+    color: var(--muted);
+    max-width: var(--measure);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .chev {
+    flex: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--faint);
+    transition: transform 0.2s var(--ease);
+  }
+
+  .empty { padding: 1rem 1.15rem; color: var(--muted); }
+</style>

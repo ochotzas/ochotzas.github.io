@@ -1,0 +1,52 @@
+---
+import { profile } from "../data/profile";
+
+interface Props { compact?: boolean }
+const { compact = false } = Astro.props;
+
+const [lead] = profile.bio;
+---
+
+<header class:list={["hero", compact && "compact"]}>
+  <h1 class="name">{compact ? <a href="/">{profile.name}</a> : profile.name}</h1>
+  <p class="role">
+    <span>{profile.role}</span>
+    {profile.available && (
+      <span class="status chip chip-strong">
+        <span class="chip-dot" aria-hidden="true" />
+        {profile.available}
+      </span>
+    )}
+  </p>
+  {!compact && <p class="lead">{lead}</p>}
+</header>
+
+<style>
+  .hero { display: grid; gap: 0.5rem; }
+
+  .name {
+    font-size: var(--step-3);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+  }
+
+  .role {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: var(--step-0);
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  .lead {
+    margin-top: 0.4rem;
+    max-width: var(--measure);
+    color: var(--muted);
+  }
+
+  .compact { gap: 0.25rem; }
+  .compact .name { font-size: var(--step-2); }
+</style>

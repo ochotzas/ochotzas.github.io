@@ -1,0 +1,60 @@
+---
+title: "Rendering A Prompt You Did Not Write"
+summary: "The moment prompts become files, they arrive from places you don't control. A template engine with defaults on is a code-execution primitive."
+published: 2026-06-30
+tags: ["llm", "security", "python"]
+draft: false
+---
+
+Move prompts out of Python and into files and you get review, diffing and tests. You also get something less pleasant: a file is portable, and portable things arrive from elsewhere.
+
+From a shared registry another team owns. From a contributor's pull request. From a package you installed. Eventually from a field in your own product, because someone asked for custom instructions and a prompt file was the nearest shape.
+
+At that point "just render it with Jinja" is a remote code execution bug with a template engine in front of it.
+
+## The two defaults that matter
+
+Jinja out of the box is a general-purpose template language. It will happily walk attributes:
+
+```jinja
+{{ ''.__class__.__mro__[1].__subclasses__() }}
+```
+
+That's the entry point to a whole genre. The fix is not to pattern-match on `__class__` — it's `SandboxedEnvironment`, which refuses attribute access it considers unsafe and won't call arbitrary Python. It's in the standard distribution and it costs you nothing you'd miss: loops, conditionals, filters and includes all still work.
+
+The second default is quieter and bites everyone. An undefined variable renders as the empty string.
+
+```jinja
+Summarise this for {{ audiance }}.
+```
+
+No error. You send `Summarise this for .` to a model, it produces something plausible, and you never find out. `StrictUndefined` turns that into a failure at render time — which is the entire reason for having typed inputs in the first place. Silent empty interpolation is the exact bug that moving prompts into files is supposed to eliminate.
+
+## Includes need a fence
+
+Sharing a house-style partial across prompts is the main reason composition exists. It also means a prompt file names a path on your disk, and a path is a request:
+
+```jinja
+{% include '/etc/passwd' %}
+{% include '../../../secrets/keys.j2' %}
+```
+
+So the loader has to be confined to a root and refuse everything outside it: absolute paths, drive-qualified and UNC paths, `..` in any position, embedded null bytes, include chains past a sane depth.
+
+The one that's easy to miss is symlinks. If you check the path string and then open the file, a symlink inside the root pointing outside it walks straight through. Resolve first, check after — `Path.resolve()` and *then* the containment test, never the other way round. A symlink that stays inside the root is fine and should keep working.
+
+## What this doesn't buy you
+
+Sandboxing and confinement stop template injection and path traversal. They do not stop a prompt from *saying* something harmful to a model, and no template engine can. A perfectly safe template can instruct a model to exfiltrate whatever it's given.
+
+So: the mechanism can be made safe, the content still needs review. Both, or you've only convinced yourself.
+
+## Why bother if the files are all yours
+
+Because they won't be. Every format that got popular ended up with a directory of third-party ones, and the decision about whether that's safe is made years earlier than the moment it matters — by whichever `Environment` someone typed on a Tuesday.
+
+The safe default costs nothing at the point you choose it and is close to unfixable once you've shipped templates that rely on the unsafe one.
+
+---
+
+Both of these are on by default in [PromptKit](https://promptkit-core.ochotzas.com/): sandboxed rendering, `StrictUndefined`, and a confined loader with tests that assert traversal and symlink escapes are refused. The [composition guide](https://promptkit-core.ochotzas.com/guide/composition/) has the full list.

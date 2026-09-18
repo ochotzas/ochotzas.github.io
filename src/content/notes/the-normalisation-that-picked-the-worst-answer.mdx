@@ -1,0 +1,201 @@
+---
+title: "The Normalisation That Picked The Worst Answer"
+summary: "Scoring a fixed menu of options instead of generating text: the maths, the one-pass trick, what it guarantees, and the default that hands 99% to the worst reply."
+published: 2026-09-16
+tags: ["llm", "design", "tooling"]
+draft: false
+---
+
+Instead of asking a model to answer and parsing what comes back, you give it a context and a fixed list of options, and read the log-probability it assigns to each option's tokens. One forward pass. Softmax the results and you have a distribution over labels you chose yourself.
+
+No decode loop. No JSON. No repair step. The model cannot return a key you did not ask for, because it never writes anything — it only scores text you supplied.
+
+That property is the selling point, and it is true. I spent an evening with an open implementation, running it on an M4 against a small ungated model, and came away with a different lesson than I expected.
+
+## Reading is parallel, writing is not
+
+A transformer is only sequential when it *produces* tokens. Token $N+1$ depends on token $N$, so decoding is a loop. Reading is fully parallel: one pass over a sequence yields a next-token distribution at every position simultaneously.
+
+Ranking pre-written options never needs the loop. The context is known text and the options are known text, so the model reads all of it in one pass and you take a number off the result. Scoring is pure prefill — compute-bound, linear in total tokens, and trivially batchable.
+
+The cost is easy to predict. A dense transformer with $D$ parameters costs about $2D$ FLOPs per token in a forward pass, so a 4B model is roughly $8$ GFLOP per token and a thousand tokens is about $8$ TFLOP of work. Nothing about that is memory-bound the way decoding is, which is why a machine that streams tokens slowly can still score a menu quickly.
+
+## The score is a sum of log-probabilities
+
+For a context $c$ and an option $o$ tokenised as $o_1 \dots o_{\lvert o \rvert}$, the raw score is the log-likelihood the model assigns to that option continuing that context:
+
+$$
+s(o \mid c) = \sum_{t=1}^{\lvert o \rvert} \log\hspace{0.17em}p(o_t \mid c,\, o_{<t})
+$$
+
+Each term comes straight out of the logits. If $z$ is the logit vector at the position predicting $o_t$, then
+
+$$
+\log\hspace{0.17em}p(o_t) = z_{o_t} - \log\hspace{0.17em}\sum_{v \in V} e^{z_v}
+$$
+
+which is the `logsumexp` you will see in any implementation — computed in float32 even when the model runs in bf16, because the subtraction is where precision quietly dies.
+
+Turning scores into a distribution over your $K$ options is an ordinary softmax:
+
+$$
+P(o_i) = \frac{e^{s_i}}{\sum_{j=1}^{K} e^{s_j}}
+$$
+
+Note what this means. The result is normalised over *the options you passed*, not over anything the model believes about the world. Add a fourth option and every number moves. This is the single most important property to hold onto, and I will come back to it.
+
+## The trick that makes it one pass
+
+Naively you concatenate the context with each option and run $K$ forward passes, costing $O(K(\lvert c \rvert + \lvert o \rvert))$ token-positions. The context gets re-encoded every time, and when $\lvert c \rvert \gg \lvert o \rvert$ that is nearly all of the work.
+
+Instead: prefill the context once, keep its KV cache, then repeat that cache along the batch dimension so every option attends to a prefix computed exactly once. The cost drops to $O(\lvert c \rvert + K\lvert o \rvert)$.
+
+```python
+cache = [KVCache() for _ in model.layers]
+logits = model(mx.array(ctx_ids)[None], cache=cache)
+last = logits[0, -1]                    # predicts each option's FIRST token
+
+# expand the prefix across the option batch
+e.keys   = mx.repeat(c.keys,   n, axis=0)
+e.values = mx.repeat(c.values, n, axis=0)
+
+logits = model(padded_options, cache=expanded)       # (n, L, V)
+first  = mx.broadcast_to(last[None, None, :], (n, 1, V))
+pred   = mx.concatenate([first, logits[:, :-1]], axis=1)
+lse    = mx.logsumexp(pred, axis=-1)
+tgt    = mx.take_along_axis(pred, arr[..., None], axis=-1)[..., 0]
+score  = ((tgt - lse) * mask).sum(-1)                # Σ log p(option | context)
+```
+
+The `concatenate([first, logits[:, :-1]])` is the line to stare at. The *context's* final logit predicts the option's first token; option position $t-1$ predicts position $t$. Get that shift wrong and you get scores that look completely reasonable and are completely wrong. The padding mask matters for the same reason — without it, pad tokens contribute real log-probabilities to shorter options.
+
+For the workload above, $\lvert c \rvert = 217$ and $K = 8$ options of about 32 tokens: 1,840 token-positions naive against 473 shared. Predicted saving $\approx 3.9\times$. Measured on my machine: **0.191s** batched against **0.695s** re-encoding per option, a **3.6×** speedup. Close enough that the model of the cost is the right one.
+
+Keep a naive re-encode-per-option implementation around purely to assert the fast path matches it. Every bug in the fast path is silent.
+
+## Length bias decides the answer
+
+Every term in $s(o \mid c)$ is a log of a probability, so every term is $\le 0$. Adding tokens can only push the sum down. Worse, it pushes down at a predictable rate: for text the model finds unsurprising, the expected per-token log-probability is roughly the negative entropy of its predictive distribution, so
+
+$$
+s(o \mid c) \;\approx\; -\lvert o \rvert \cdot \bar{H}
+$$
+
+Length dominates. Comparing raw sums across options of different lengths is close to comparing their token counts.
+
+There are three standard repairs:
+
+| Norm | Formula | Use when |
+|---|---|---|
+| `mean` | $\bar{s} = s / \lvert o \rvert$ | General case |
+| `sum` | $s$ | Every option is the same token length |
+| `pmi` | $s - s_\varnothing$ | Options differ in base-rate plausibility |
+
+The third is pointwise mutual information, and it is the interesting one:
+
+$$
+s_{\text{pmi}} = \log\hspace{0.17em}\frac{p(o \mid c)}{p(o)} = \log\hspace{0.17em}p(o \mid c) - \log\hspace{0.17em}p(o)
+$$
+
+Subtract how likely the option is with *no* context at all and what remains is the evidence the context actually contributed. It is the honest choice when one option is simply a more common English phrase than the others, and it costs one extra prefill against an empty context.
+
+Here is the same question, same three options, run three ways. Context: `Customer: my order arrived broken. Agent:`
+
+```
+norm=mean
+60.3%  " I am sorry to hear that, I will send a replacement today."   14 tokens
+26.9%  " Have you tried turning it off and on again?"                 10 tokens
+12.8%  " Please read our returns policy."                              6 tokens
+
+norm=sum
+99.0%  " Please read our returns policy."                              6 tokens
+ 0.7%  " I am sorry to hear that, I will send a replacement today."   14 tokens
+ 0.3%  " Have you tried turning it off and on again?"                 10 tokens
+```
+
+Ninety-nine percent on the worst reply, because it was the shortest. No crash, no warning. A confident, well-formed probability distribution over exactly the options I supplied.
+
+The gap is worth reading in log space. The raw sums were $-19.999$, $-24.934$ and $-25.869$; a difference of about $5$ nats exponentiates to a factor of $e^{5} \approx 148$, which is how six tokens beat fourteen by two orders of magnitude. Softmax is unforgiving of small differences in the score you feed it, so the normalisation is not a tidying step applied to an answer — it *is* the answer.
+
+`sum` is genuinely correct when every option is the same token length. Yes and no. Digits zero to nine. Point it at a menu of English sentences and length quietly becomes the ranking. Check `n_tokens` in the output before you trust any of it.
+
+## Three primitives cover most decisions
+
+The interface exposes three question types. Each renders into a prompt ending in `Answer:` with the candidate labels scored as continuations:
+
+| Type | Options scored | Returns |
+|---|---|---|
+| yes/no | `["yes", "no"]` | $P(\text{yes})$ |
+| choice | the option keys | $\arg\max_i P(o_i)$, the distribution, confidence |
+| score | `["0", "1", … n]` | expected value |
+
+The ordinal one is the elegant case. Because you get a distribution rather than a sample, a rating over levels $0 \dots n$ becomes a smooth expected value for free:
+
+$$
+\mathbb{E}[\text{score}] = \sum_{i=0}^{n} i \cdot P(o_i)
+$$
+
+No sampling variance, no re-rolling, and a rating of $1.31$ rather than a lurching integer. This is also the one place `sum` is the right norm, since the labels are single digits of equal length.
+
+## Well-formed is not correct
+
+Then the routing test. Three questions about one support ticket: *our Stripe connection has been failing for three days and we are losing sales every hour, we need this fixed urgently.*
+
+It sent a payment outage to `sales` rather than `technical`. It put urgency at $0.30$ on a message containing the word "urgently".
+
+The response itself was immaculate. Valid types, probabilities summing to one, the ordinal rating computed correctly, eight output tokens for three decisions. Every structural promise kept. The judgements were just wrong.
+
+Constraining the output space eliminates one failure mode completely, and eliminates nothing else. A menu guarantees the answer is *in* the menu. It says nothing about whether it is the right item — and because the shape is now always perfect, there is no ragged edge left to catch your eye. I had already started skipping the checks I would have run on a parsed string.
+
+Two things are worth separating here. The mechanism was correct: every number verified against the naive implementation to within quantisation noise. The *judgements* were bad because a 0.5B model was making them. Those are independent concerns, and conflating them sends you debugging the wrong layer.
+
+## The number that saved it
+
+Confidence, computed as normalised Shannon entropy. For a distribution $p$ over $K$ options:
+
+$$
+H(p) = -\sum_{i=1}^{K} p_i \ln\hspace{0.17em}p_i
+\qquad
+c = 1 - \frac{H(p)}{\ln\hspace{0.17em}K}
+$$
+
+The division by $\ln\hspace{0.17em}K$ is what makes it comparable across questions with different numbers of options: $H$ is maximised at $\ln\hspace{0.17em}K$ by the uniform distribution, so $c = 0$ means "flat, no idea" and $c = 1$ means "a spike, total certainty" regardless of whether $K$ is 2 or 200.
+
+On the wrong routing call it read **0.088**. Near-uniform. The model was reporting that it had no idea, in the same response where it committed to an answer.
+
+So gate on it. Threshold the entropy, send low-confidence decisions somewhere with a human in it, and that answer never ships.
+
+This is *not* calibration. A calibrated model is one where, across all the times it says $p$, it is right a $p$ fraction of the time:
+
+$$
+\mathbb{P}\big(\text{correct} \mid P(o) = p\big) = p \quad \text{for all } p
+$$
+
+Nothing in the likelihood pipeline optimises for that. The probabilities are relative to the options you passed, and $0.9$ does not mean ninety percent likely. Closing the gap takes training against real outcomes rather than against next-token likelihood. The open implementations do not have it. But "I don't know" is still information, and it was sitting in the payload the whole time.
+
+## Where "better" comes from
+
+The log-probability route defines "better" as "more likely as a continuation". That is a real definition, and it is frequently not yours. There are three places to get a score, in the order worth trying them:
+
+**The LM head, zero-shot.** What everything above describes. No training, no labels. Costs one prefill and tells you immediately whether the model already separates good from bad. Text only — useless on raw bytes like game frames or board states.
+
+**A trained head on frozen hidden states.** Load the backbone without its LM head, freeze it, pool the per-token states for context and options, and train a small ranking module. The linear-probe pattern: cheap, stable, one encoder serving many heads. Precompute the encoder's features once over the dataset and each training epoch costs seconds. This is where non-text inputs get handled, via a small byte-level encoder trained from scratch.
+
+**LoRA on the backbone.** Last resort, once the frozen head plateaus and you have enough labels that unfreezing will not just overfit. Keep the backbone learning rate roughly an order of magnitude below the head's and use warmup, or the first few steps destroy the pretrained representations.
+
+The tell that you should stop at route one and move to route two is behavioural: you find yourself writing longer and longer prompts to explain what "better" means. That is the point at which likelihood is not your objective and no amount of prompt surgery will make it one.
+
+## Things that will bite you
+
+- **Leading spaces are part of the option.** `" Paris"` and `"Paris"` tokenise differently and score differently. Be consistent or your comparisons are meaningless.
+- **bf16, not fp16.** Gemma's activations overflow in fp16. Compute the log-softmax in float32 regardless.
+- **Large vocabularies make the LM head expensive.** At ~262k tokens, materialising logits at every position wastes most of the pass. Compute them at option positions only.
+- **Reusing a prefix cache can mutate it.** Deep-copy per option, or batch with padding and expand once.
+- **No-BOS tokenizers break the `pmi` path.** The unconditional baseline $s_\varnothing$ is built as a one-token sequence `[bos_id]`, and Qwen2.5's `bos_token_id` is `None` — `ValueError: Invalid type NoneType`. Invisible on Gemma, which has a real BOS. Fall back to the EOS or pad token if you port this. `mean` and `sum` are unaffected.
+- **Quantisation shows up in the scores.** On a 4-bit model my cached and naive paths agreed to $2.5 \times 10^{-2}$ percent on short contexts and were bit-identical on a 215-token one. Fine for ranking, not fine if you are treating the absolute log-probabilities as meaningful.
+
+The guarantee I bought was well-formedness. I nearly spent it as correctness.
+
+---
+
+The implementation I read is [open-jev](https://github.com/daseinlabs/open-jev), an open take on TypeSafe's [System One](https://docs.typesafe.ai/concepts/system-one) interface. Reproducing the numbers above needs no gated weights: `uv sync`, then point it at `mlx-community/Qwen2.5-0.5B-Instruct-4bit` and run `openjev check` and `openjev bench`.

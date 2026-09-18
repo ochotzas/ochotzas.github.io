@@ -1,0 +1,45 @@
+---
+import Base from "../layouts/Base.astro";
+import Ledger from "../components/Ledger.astro";
+import Card from "../components/Card.astro";
+import Colophon from "../components/Colophon.astro";
+---
+
+<Base title="Lost" description="This page does not exist, and never especially did." noindex>
+  <Ledger>
+    <Card>
+      <div class="void">
+        <p class="code">404</p>
+        <p class="msg">Nothing at this address. It either moved, or I got bored and went to make coffee.</p>
+        <a class="cta" href="/">Back Home</a>
+      </div>
+    </Card>
+    <Colophon />
+  </Ledger>
+</Base>
+
+<style>
+  .void { padding: clamp(2.5rem, 1rem + 6vw, 4.5rem) 1.5rem; text-align: center; }
+
+  .code {
+    font-size: var(--step-3);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .msg { margin-top: 0.6rem; color: var(--muted); }
+
+  .cta {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-weight: 600;
+    background: var(--ink);
+    color: var(--canvas);
+    padding: 0.6rem 1.3rem;
+    border-radius: var(--r-pill);
+  }
+
+  .cta:hover { opacity: 0.85; }
+</style>

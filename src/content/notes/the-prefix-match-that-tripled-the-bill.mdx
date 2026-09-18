@@ -1,0 +1,64 @@
+---
+title: "The Prefix Match That Tripled The Bill"
+summary: "A cost estimator that is confidently wrong is worse than one that says it doesn't know. How a two-line convenience priced Opus 4.5 as Opus 4."
+published: 2026-05-26
+tags: ["llm", "design", "tooling"]
+draft: false
+---
+
+I had a pricing table keyed by model name, and the obvious problem: providers ship names faster than anyone updates a table. `gpt-4o-mini-2024-07-18` isn't in it. `claude-3-5-sonnet-20241022` isn't in it. Returning "unknown" for names that are plainly a variant of something known felt unhelpful.
+
+So: resolve an unknown name to its longest matching prefix. Two lines. Fixed the dated snapshots immediately.
+
+Then `claude-opus-4-5` shipped.
+
+## What it did
+
+`claude-opus-4-5` has no entry. Longest matching prefix in the table: `claude-opus-4`. The lookup succeeds, the number comes back, the report prints a total with a dollar sign in front of it.
+
+Three times too high.
+
+`o3-pro` did the same thing against `o3`. Both look exactly like a correct answer. There is no warning, no asterisk, nothing in the output that distinguishes this from a price that was looked up properly — because from the code's point of view it *was* looked up properly.
+
+## The category error
+
+I had optimised for coverage. The metric in my head was "how many model names produce a number", and prefix matching moved it a lot.
+
+That was the wrong metric. Nobody wants a number. They want a number they can act on — put in a budget, show a finance team, gate a deploy with `max_cost`. A wrong number is not a partial version of that. It is worse than the blank, because the blank makes you go and look it up and the wrong one makes you confident.
+
+Silence is a valid answer. "I don't know what this model costs" is information, and the user can register the rate themselves in one line. "This costs $0.0009" when it costs $0.0003 is not information, it's damage, and it propagates into whatever spreadsheet it lands in.
+
+## What replaced it
+
+A name now resolves in exactly three ways, and nothing else:
+
+| Kind | When |
+| --- | --- |
+| `exact` | The name is a key in the table |
+| `snapshot` | The name is a dated or `-latest` variant of a key |
+| `override` | You registered it yourself |
+
+A dated snapshot is safe because it genuinely shares a price with its base model — that's what a snapshot *is*. `claude-opus-4-5` is not a snapshot of `claude-opus-4`, it's a different model that shares six characters. Prefix length was never evidence of anything; it just correlated with it often enough to look like it.
+
+Anything unresolved returns nothing, and the report says so.
+
+## Make the guess visible
+
+The same rule applies one level up, at token counts. Some come from the provider's own usage response. Some are estimated locally before you've made the call. Those are not the same kind of number and they must not print the same way:
+
+```console
+Input tokens: 21 (exact)
+Output tokens: 500 (assumed)
+```
+
+The object carries it too — `Usage.estimated` is a boolean on every completion — so a cost report built on top of it can't quietly launder a guess into a fact.
+
+## The rule
+
+If your code can tell the difference between knowing and guessing, the output has to as well. And when it can't tell, it says nothing.
+
+An API that admits uncertainty is trusted for the numbers it does give you. One that always answers gets checked by hand, which means it saved nobody anything.
+
+---
+
+The pricing snapshot in [PromptKit](https://promptkit-core.ochotzas.com/) is vendored from LiteLLM's public dataset, refreshed by a scheduled workflow so staleness shows up as a pull request. Details in the [pricing reference](https://promptkit-core.ochotzas.com/reference/pricing/).

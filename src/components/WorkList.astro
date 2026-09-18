@@ -1,0 +1,121 @@
+---
+import { work } from "../data/work";
+
+const sorted = [...work].sort((a, b) => b.year - a.year);
+---
+
+<ul class="rows">
+  {
+    sorted.map((item) => {
+      const primary = item.href ?? item.repo;
+      return (
+        <li class="row">
+          {primary && <a class="hit" href={primary} rel="noopener noreferrer" target="_blank" aria-label={item.name} />}
+          <div class="body">
+            <div class="top">
+              <h3 class="name">{item.name}</h3>
+              {item.status !== "active" && <span class="tag">{item.status}</span>}
+              <span class="year">{item.year}</span>
+            </div>
+            <p class="blurb">{item.blurb}</p>
+            <ul class="chips">
+              {item.stack.map((tech) => (
+                <li class="chip">{tech}</li>
+              ))}
+            </ul>
+          </div>
+          {primary && <span class="chev" aria-hidden="true">›</span>}
+        </li>
+      );
+    })
+  }
+</ul>
+
+<style>
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.15rem;
+    transition: background 0.15s var(--ease);
+  }
+
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1.15rem;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  .hit { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+
+  .row:has(.hit:hover),
+  .row:has(.hit:focus-visible) { background: var(--fill); }
+  .row:has(.hit:hover) .chev { transform: translateX(3px); }
+  .row:has(.hit:focus-visible) { outline: 2.5px solid var(--ink); outline-offset: -3px; border-radius: var(--r-sm); }
+
+  .body { flex: 1; min-width: 0; }
+
+  .top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .name {
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .tag {
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    background: var(--fill);
+    padding: 0.14rem 0.5rem;
+    border-radius: var(--r-pill);
+  }
+
+  .year {
+    margin-left: auto;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .blurb {
+    margin-top: 0.25rem;
+    color: var(--muted);
+    max-width: var(--measure);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+
+
+
+  .chev {
+    flex: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--faint);
+    transition: transform 0.2s var(--ease);
+  }
+</style>
