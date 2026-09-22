@@ -1,0 +1,61 @@
+User-agent: *
+Disallow: /play
+Allow: /
+
+User-agent: GPTBot
+Disallow: /play
+Allow: /
+
+User-agent: OAI-SearchBot
+Disallow: /play
+Allow: /
+
+User-agent: ChatGPT-User
+Disallow: /play
+Allow: /
+
+User-agent: ClaudeBot
+Disallow: /play
+Allow: /
+
+User-agent: Claude-SearchBot
+Disallow: /play
+Allow: /
+
+User-agent: Claude-User
+Disallow: /play
+Allow: /
+
+User-agent: PerplexityBot
+Disallow: /play
+Allow: /
+
+User-agent: Perplexity-User
+Disallow: /play
+Allow: /
+
+User-agent: Google-Extended
+Disallow: /play
+Allow: /
+
+User-agent: Applebot-Extended
+Disallow: /play
+Allow: /
+
+User-agent: Bingbot
+Disallow: /play
+Allow: /
+
+User-agent: DuckAssistBot
+Disallow: /play
+Allow: /
+
+User-agent: cohere-ai
+Disallow: /play
+Allow: /
+
+User-agent: meta-externalagent
+Disallow: /play
+Allow: /
+
+Sitemap: https://ochotzas.com/sitemap-index.xml

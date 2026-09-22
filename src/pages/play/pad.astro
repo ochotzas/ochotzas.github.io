@@ -1,0 +1,539 @@
+---
+import Base from "../../layouts/Base.astro";
+---
+
+<Base title="Controller" description="Phone controller for the arcade." noindex bare>
+  <main class="pad" data-pad data-view="name">
+    <section class="view name-view">
+      <header class="bar">
+        <span class="screen"></span>
+        <button class="icon" type="button" data-settings aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.1" />
+            <path d="M19.2 14.6a1.5 1.5 0 0 0 .3 1.65l.05.05a1.8 1.8 0 1 1-2.55 2.55l-.05-.05a1.5 1.5 0 0 0-1.65-.3 1.5 1.5 0 0 0-.9 1.37v.13a1.8 1.8 0 1 1-3.6 0v-.07a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.5.05a1.8 1.8 0 1 1-2.55-2.55l.05-.05a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.37-.9h-.13a1.8 1.8 0 1 1 0-3.6h.07a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.05-.05A1.8 1.8 0 1 1 7.56 4.4l.5.05a1.5 1.5 0 0 0 1.65.3h.07a1.5 1.5 0 0 0 .9-1.37v-.13a1.8 1.8 0 1 1 3.6 0v.07a1.5 1.5 0 0 0 .9 1.37 1.5 1.5 0 0 0 1.65-.3l.05-.05a1.8 1.8 0 1 1 2.55 2.55l-.5.05a1.5 1.5 0 0 0-.3 1.65v.07a1.5 1.5 0 0 0 1.37.9h.13a1.8 1.8 0 1 1 0 3.6h-.07a1.5 1.5 0 0 0-1.37.9Z" />
+          </svg>
+        </button>
+      </header>
+      <div class="middle">
+        <p class="eyebrow">Room <span data-room></span></p>
+        <h1 class="ask" data-ask>Who's playing?</h1>
+        <form class="join" data-join>
+          <input id="pad-name" name="name" type="text" maxlength="12" autocomplete="nickname" placeholder="Your name" required />
+          <button type="submit" data-join-btn>Ready</button>
+        </form>
+        <p class="note" data-note></p>
+      </div>
+    </section>
+
+    <section class="view searching-view">
+      <div class="middle">
+        <div class="radar" aria-hidden="true"><span></span><span></span><span></span></div>
+        <p class="searching" data-status>Looking for the screen…</p>
+        <p class="note" data-hint></p>
+      </div>
+    </section>
+
+    <section class="view settings-view">
+      <header class="bar">
+        <span class="screen">Settings</span>
+        <button class="back" type="button" data-settings-done>Done</button>
+      </header>
+
+      <div class="sheet">
+        <p class="group-label">Profile</p>
+        <form class="group" data-rename>
+          <label class="row" for="settings-name">
+            <span class="row-label">Name</span>
+            <input id="settings-name" name="name" type="text" maxlength="12" autocomplete="nickname" required />
+          </label>
+          <button class="row row-action" type="submit">Save name</button>
+        </form>
+
+        <p class="group-label">Preferences</p>
+        <div class="group">
+          <div class="row">
+            <span class="row-label">Appearance</span>
+            <div class="segmented" role="group" aria-label="Appearance">
+              <button type="button" data-theme-set="light">Light</button>
+              <button type="button" data-theme-set="dark">Dark</button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="row-label">Sound</span>
+            <div class="segmented" role="group" aria-label="Sound">
+              <button type="button" data-sound-set="on">On</button>
+              <button type="button" data-sound-set="off">Off</button>
+            </div>
+          </div>
+        </div>
+
+        <div data-captain-only hidden>
+          <p class="group-label">Big screen</p>
+          <div class="group">
+            <div class="row">
+              <span class="row-label">Appearance</span>
+              <div class="segmented" role="group" aria-label="Screen appearance">
+                <button type="button" data-screen-theme="light">Light</button>
+                <button type="button" data-screen-theme="dark">Dark</button>
+              </div>
+            </div>
+          </div>
+          <p class="group-note">You are the captain, so this changes the television.</p>
+        </div>
+
+        <p class="group-note">Room <span data-room></span> · you are <span data-me></span></p>
+      </div>
+    </section>
+
+    <section class="view ready-view">
+      <header class="bar">
+        <span class="screen" data-screen>Lobby</span>
+        <button class="back" type="button" data-back-btn hidden>‹ Menu</button>
+        <button class="icon" type="button" data-settings aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.1" />
+            <path d="M19.2 14.6a1.5 1.5 0 0 0 .3 1.65l.05.05a1.8 1.8 0 1 1-2.55 2.55l-.05-.05a1.5 1.5 0 0 0-1.65-.3 1.5 1.5 0 0 0-.9 1.37v.13a1.8 1.8 0 1 1-3.6 0v-.07a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.5.05a1.8 1.8 0 1 1-2.55-2.55l.05-.05a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.37-.9h-.13a1.8 1.8 0 1 1 0-3.6h.07a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.05-.05A1.8 1.8 0 1 1 7.56 4.4l.5.05a1.5 1.5 0 0 0 1.65.3h.07a1.5 1.5 0 0 0 .9-1.37v-.13a1.8 1.8 0 1 1 3.6 0v.07a1.5 1.5 0 0 0 .9 1.37 1.5 1.5 0 0 0 1.65-.3l.05-.05a1.8 1.8 0 1 1 2.55 2.55l-.5.05a1.5 1.5 0 0 0-.3 1.65v.07a1.5 1.5 0 0 0 1.37.9h.13a1.8 1.8 0 1 1 0 3.6h-.07a1.5 1.5 0 0 0-1.37.9Z" />
+          </svg>
+        </button>
+      </header>
+
+      <article class="card" data-card hidden>
+        <p class="card-job" data-card-job></p>
+        <p class="card-blurb" data-card-blurb></p>
+        <p class="card-ability" data-card-ability></p>
+        <ul class="card-secrets" data-card-secrets></ul>
+      </article>
+
+      <div class="stage" data-stage></div>
+      <p class="hint" data-pad-hint></p>
+    </section>
+  </main>
+</Base>
+
+<script>
+  import { startPad } from "../../play/pad";
+
+  const boot = () => {
+    const root = document.querySelector<HTMLElement>("[data-pad]");
+    if (root && !root.dataset.ready) {
+      root.dataset.ready = "";
+      startPad(root);
+    }
+  };
+
+  document.addEventListener("astro:page-load", boot);
+</script>
+
+<style>
+  .pad {
+    flex: 1;
+    min-height: 100dvh;
+    display: grid;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .view { display: none; grid-template-rows: auto 1fr auto; min-height: 0; }
+  .pad[data-view="name"] .name-view,
+  .pad[data-view="searching"] .searching-view,
+  .pad[data-view="settings"] .settings-view,
+  .pad[data-view="ready"] .ready-view { display: grid; }
+
+  .middle {
+    grid-row: 1 / -1;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.6rem;
+    padding: var(--gutter);
+    text-align: center;
+  }
+
+  .eyebrow {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+
+  .ask {
+    font-size: var(--step-2);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .join {
+    display: grid;
+    gap: 0.5rem;
+    width: min(20rem, 100%);
+    margin-top: 0.4rem;
+  }
+
+  .join input {
+    font-family: inherit;
+    font-size: 16px;
+    text-align: center;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--separator);
+    border-radius: var(--r-md);
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  .join button {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 0.85rem 1rem;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: var(--ink);
+    color: var(--canvas);
+    cursor: pointer;
+  }
+
+  .note { font-size: var(--step--1); color: var(--faint); max-width: 24ch; }
+
+  .sheet {
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    padding: 0.75rem var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+    overflow-y: auto;
+  }
+
+  .group-label {
+    padding: 0.9rem 1.15rem 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--faint);
+  }
+
+  .group {
+    display: grid;
+    background: var(--card);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 52px;
+    padding: 0.55rem 1.15rem;
+  }
+
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1.15rem;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  .row-label { font-weight: 600; flex: none; }
+
+  .row input {
+    font-family: inherit;
+    font-size: 16px;
+    text-align: right;
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    padding: 0.35rem 0;
+  }
+
+  .row input:focus { outline: none; }
+
+  .row-action {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    justify-content: center;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .row-action:active { background: var(--fill); }
+
+  .group-note {
+    padding: 0.8rem 1.15rem;
+    font-size: var(--step--1);
+    color: var(--faint);
+  }
+
+  .field-label,
+  .field-label,
+  .prefs-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+
+  .segmented {
+    display: inline-flex;
+    gap: 0.2rem;
+    padding: 0.25rem;
+    border-radius: var(--r-pill);
+    background: var(--fill);
+  }
+
+  .segmented button {
+    font-family: inherit;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    padding: 0.5rem 1.2rem;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+
+  .segmented button[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .radar {
+    position: relative;
+    width: 5.5rem;
+    height: 5.5rem;
+    display: grid;
+    place-items: center;
+  }
+
+  .radar span {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--separator);
+    border-radius: var(--r-pill);
+    animation: ping 2.4s var(--ease) infinite;
+  }
+
+  .radar span:nth-child(2) { animation-delay: 0.8s; }
+  .radar span:nth-child(3) { animation-delay: 1.6s; }
+
+  @keyframes ping {
+    from { transform: scale(0.35); opacity: 0; }
+    35% { opacity: 1; }
+    to { transform: scale(1); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .radar span { animation: none; opacity: 0.5; }
+  }
+
+  .searching { font-weight: 700; letter-spacing: -0.015em; }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: calc(env(safe-area-inset-top, 0px) + 0.6rem) var(--gutter) 0;
+  }
+
+  .bar .screen { margin-right: auto; }
+
+  .screen { font-weight: 700; letter-spacing: -0.02em; }
+
+  .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: var(--fill);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .back {
+    font-family: inherit;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--fill);
+    border: 0;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--r-pill);
+    min-height: 36px;
+    cursor: pointer;
+  }
+
+  .back:active { background: var(--separator); color: var(--ink); }
+
+  .stage {
+    touch-action: none;
+    display: grid;
+    align-content: end;
+    justify-items: center;
+    gap: 1.1rem;
+    padding: 0 var(--gutter);
+    min-height: 0;
+  }
+
+  .stage :global(.dpad) {
+    display: grid;
+    grid-template-columns: repeat(3, min(5rem, 22vw));
+    grid-template-rows: repeat(3, min(5rem, 22vw));
+    gap: 0.45rem;
+  }
+
+  .stage :global(.pad-key) {
+    font: inherit;
+    font-size: 1.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--r-md);
+    background: var(--card);
+    color: var(--muted);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: background 0.08s var(--ease), transform 0.08s var(--ease);
+  }
+
+  .stage :global(.pad-key.down) {
+    background: var(--ink);
+    color: var(--canvas);
+    transform: scale(0.96);
+  }
+
+  .stage :global(.pad-up) { grid-area: 1 / 2; }
+  .stage :global(.pad-left) { grid-area: 2 / 1; }
+  .stage :global(.pad-right) { grid-area: 2 / 3; }
+  .stage :global(.pad-down) { grid-area: 3 / 2; }
+
+  .card {
+    margin: 0.75rem var(--gutter) 0;
+    padding: 0.9rem 1.1rem;
+    background: var(--card);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .card-job {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--faint);
+  }
+
+  .card-blurb { font-weight: 700; letter-spacing: -0.015em; }
+  .card-ability { font-size: var(--step--1); color: var(--muted); }
+
+  .card-secrets { display: grid; gap: 0.15rem; margin-top: 0.3rem; }
+
+  .card-secrets :global(li) {
+    font-size: var(--step--1);
+    color: var(--ink);
+    padding-left: 0.9rem;
+    position: relative;
+  }
+
+  .card-secrets :global(li)::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: var(--r-pill);
+    background: var(--ink);
+  }
+
+  .stage :global(.choices) {
+    display: grid;
+    gap: 0.5rem;
+    width: 100%;
+    align-content: end;
+  }
+
+  .stage :global(.choice) {
+    display: grid;
+    gap: 0.15rem;
+    text-align: left;
+    font: inherit;
+    padding: 0.9rem 1.1rem;
+    border: 0;
+    border-radius: var(--r-md);
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform 0.08s var(--ease), background 0.15s var(--ease);
+  }
+
+  .stage :global(.choice .label) { font-weight: 700; letter-spacing: -0.015em; }
+  .stage :global(.choice .note) { font-size: var(--step--1); color: var(--muted); }
+  .stage :global(.choice.danger .label) { color: var(--ink); }
+  .stage :global(.choice.danger) { box-shadow: var(--shadow-sm), inset 3px 0 0 var(--ink); }
+  .stage :global(.choice:active) { transform: scale(0.985); background: var(--fill); }
+  .stage :global(.choice.picked) { background: var(--ink); color: var(--canvas); }
+  .stage :global(.choice.picked .note) { color: var(--canvas); opacity: 0.7; }
+  .stage :global(.choice:disabled) { opacity: 0.45; cursor: not-allowed; }
+
+  .stage :global(.actions) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .stage :global(.action) {
+    font: inherit;
+    font-size: clamp(0.8rem, 3.4vw, 1rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    min-width: 0;
+    padding: 0.5rem;
+    min-height: min(7.5rem, 26vh);
+    border: 0;
+    border-radius: var(--r-lg);
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: background 0.08s var(--ease), color 0.08s var(--ease), transform 0.08s var(--ease);
+  }
+
+  .stage :global(.action.down) {
+    background: var(--ink);
+    color: var(--canvas);
+    transform: scale(0.96);
+  }
+
+  .hint {
+    text-align: center;
+    font-size: var(--step--1);
+    color: var(--faint);
+    padding: 1rem var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
+  }
+</style>

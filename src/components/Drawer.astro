@@ -1,0 +1,257 @@
+---
+interface Props {
+  id: string;
+  title: string;
+  eyebrow?: string;
+}
+const { id, title, eyebrow } = Astro.props;
+---
+
+<dialog class="drawer" id={id} aria-labelledby={`${id}-title`}>
+  <article class="sheet">
+    <div class="grab" data-drawer-grab>
+      <span class="grip" aria-hidden="true"></span>
+      <header class="head">
+        <div class="heading">
+          {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+          <h2 class="title" id={`${id}-title`}>{title}</h2>
+        </div>
+        <button class="close" type="button" data-drawer-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </header>
+    </div>
+    <div class="body"><slot /></div>
+  </article>
+</dialog>
+
+<script>
+  declare global {
+    interface Window { __drawers?: boolean }
+  }
+
+  if (!window.__drawers) {
+    window.__drawers = true;
+
+    const open = (drawer: HTMLDialogElement) => {
+      drawer.style.removeProperty("--drag");
+      drawer.showModal();
+    };
+
+    document.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement | null;
+
+      const opener = target?.closest<HTMLElement>("[data-drawer]");
+      if (opener) {
+        const drawer = document.getElementById(opener.dataset.drawer ?? "");
+        if (drawer instanceof HTMLDialogElement) {
+          event.preventDefault();
+          open(drawer);
+        }
+        return;
+      }
+
+      if (target?.closest("[data-drawer-close]")) {
+        target.closest("dialog")?.close();
+        return;
+      }
+
+      if (target instanceof HTMLDialogElement && target.open) target.close();
+    });
+
+    let drag: { drawer: HTMLDialogElement; id: number; from: number; at: number; y: number; v: number } | null = null;
+
+    document.addEventListener("pointerdown", (event) => {
+      const grab = (event.target as HTMLElement | null)?.closest("[data-drawer-grab]");
+      const drawer = grab?.closest("dialog");
+      if (!grab || !(drawer instanceof HTMLDialogElement)) return;
+      if (event.pointerType === "mouse" && !(event.target as HTMLElement).closest(".grip")) return;
+
+      drag = { drawer, id: event.pointerId, from: event.clientY, at: performance.now(), y: 0, v: 0 };
+      drawer.dataset.dragging = "";
+      grab.setPointerCapture(event.pointerId);
+    });
+
+    document.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const y = Math.max(0, event.clientY - drag.from);
+      const now = performance.now();
+      const dt = now - drag.at;
+      if (dt > 0) drag.v = (y - drag.y) / dt;
+      drag.y = y;
+      drag.at = now;
+      drag.drawer.style.setProperty("--drag", `${y}px`);
+    });
+
+    const release = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const { drawer, y, v } = drag;
+      const height = drawer.getBoundingClientRect().height || 1;
+      drag = null;
+      delete drawer.dataset.dragging;
+      drawer.style.removeProperty("--drag");
+      if (y > height * 0.3 || v > 0.55) drawer.close();
+    };
+
+    document.addEventListener("pointerup", release);
+    document.addEventListener("pointercancel", release);
+  }
+</script>
+
+<style>
+  .drawer {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: min(52rem, 100%);
+    max-width: 100%;
+    max-height: min(86dvh, 46rem);
+    margin: 0 auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    overflow: visible;
+    translate: 0 var(--drag, 0px);
+  }
+
+  .drawer[data-dragging] { transition: none !important; cursor: grabbing; }
+
+  .drawer::backdrop {
+    background: rgba(0, 0, 0, 0);
+    transition:
+      background 0.4s var(--ease),
+      overlay 0.4s var(--ease) allow-discrete,
+      display 0.4s var(--ease) allow-discrete;
+  }
+
+  .drawer[open]::backdrop {
+    background: rgba(0, 0, 0, 0.32);
+    backdrop-filter: blur(3px);
+  }
+
+  @starting-style {
+    .drawer[open]::backdrop { background: rgba(0, 0, 0, 0); }
+  }
+
+  .sheet {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    max-height: inherit;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    background: var(--card);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: 0 -1px 0 var(--hairline), var(--shadow-lg);
+  }
+
+  .grab {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.55rem 1.25rem 0.75rem;
+    touch-action: none;
+  }
+
+  .grip {
+    justify-self: center;
+    width: 2.4rem;
+    height: 5px;
+    border-radius: var(--r-pill);
+    background: var(--separator);
+    cursor: grab;
+  }
+
+  .head {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .heading { flex: 1; min-width: 0; display: grid; gap: 0.15rem; }
+
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--faint);
+  }
+
+  .title {
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  .close {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: var(--fill);
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+
+  .close:hover { background: var(--separator); color: var(--ink); }
+
+  .body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 1.25rem;
+    color: var(--muted);
+    display: grid;
+    gap: 0.8rem;
+    align-content: start;
+  }
+
+  @media (pointer: coarse) {
+    .close { width: 44px; height: 44px; }
+  }
+
+  @media (min-width: 38rem) {
+    .drawer {
+      bottom: var(--gutter);
+      padding-inline: var(--gutter);
+    }
+
+    .sheet { border-radius: var(--r-lg); }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .drawer {
+      translate: 0 calc(100% + var(--drag, 0px));
+      transition:
+        translate 0.42s var(--ease),
+        overlay 0.42s var(--ease) allow-discrete,
+        display 0.42s var(--ease) allow-discrete;
+    }
+
+    .drawer[open] { translate: 0 var(--drag, 0px); }
+
+    @starting-style {
+      .drawer[open] { translate: 0 100%; }
+    }
+
+    :global(html:has(dialog[open])) :global(.chrome),
+    :global(html:has(dialog[open])) :global(.page),
+    :global(html:has(dialog[open])) :global(.tabs) {
+      scale: 0.98;
+      border-radius: var(--r-lg);
+    }
+
+    :global(.chrome),
+    :global(.page),
+    :global(.tabs) {
+      transform-origin: top center;
+      transition: scale 0.42s var(--ease);
+    }
+  }
+</style>

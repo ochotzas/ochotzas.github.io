@@ -1,0 +1,226 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Ledger from "../../components/Ledger.astro";
+import Card from "../../components/Card.astro";
+import Colophon from "../../components/Colophon.astro";
+import { Image } from "astro:assets";
+import avatar from "../../assets/avatar.png";
+import { profile } from "../../data/profile";
+import "../../styles/prose.css";
+
+export async function getStaticPaths() {
+  const notes = await getCollection("notes", ({ data }) => !data.draft);
+  const sorted = notes.sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf());
+  return sorted.map((note, i) => ({
+    params: { slug: note.id },
+    props: { note, next: sorted[i - 1] ?? null, prev: sorted[i + 1] ?? null },
+  }));
+}
+
+const { note, next, prev } = Astro.props;
+const { Content } = await render(note);
+
+const wordCount = note.body ? note.body.trim().split(/\s+/).length : 0;
+const minutes = Math.max(1, Math.round(wordCount / 200));
+
+const fmt = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const [user, domain] = profile.email.split("@");
+const more = [prev, next].filter(Boolean);
+---
+
+<Base
+  title={note.data.title}
+  description={note.data.summary}
+  ogRoute={`notes/${note.id}`}
+  type="article"
+  published={note.data.published}
+  updated={note.data.updated}
+  keywords={note.data.tags}
+  wordCount={wordCount}
+  markdown={`/notes/${note.id}.md`}
+  breadcrumbs={[
+    { name: "Home", path: "/" },
+    { name: "Writing", path: "/notes" },
+    { name: note.data.title, path: `/notes/${note.id}` },
+  ]}
+>
+  <Ledger>
+    <article class="note">
+      <header class="head">
+        <p class="meta">
+          <time datetime={note.data.published.toISOString()}>{fmt.format(note.data.published)}</time>
+          <span class="sep" aria-hidden="true">·</span>
+          <span>{minutes} min read</span>
+        </p>
+        <h1 class="title">{note.data.title}</h1>
+        <p class="lead">{note.data.summary}</p>
+        {
+          note.data.tags.length > 0 && (
+            <ul class="tags">
+              {note.data.tags.map((tag) => (
+                <li class="chip">{tag}</li>
+              ))}
+            </ul>
+          )
+        }
+      </header>
+
+      <div class="prose"><Content /></div>
+    </article>
+
+    <Card>
+      <div class="cta">
+        <Image class="mark" src={avatar} alt={profile.name} width={44} height={44} densities={[1, 2, 3]} loading="lazy" />
+        <p class="cta-text">Useful? Wrong? Both? I'd like to hear which.</p>
+        <a class="cta-link" data-user={user} data-domain={domain} href="#" data-mail>Say Hello</a>
+      </div>
+    </Card>
+
+    {
+      more.length > 0 && (
+        <section class="more">
+          <h2 class="more-label">Keep Reading</h2>
+          <Card>
+            <ul>
+              {more.map((item) => (
+                <li class="more-row">
+                  <a class="hit" href={`/notes/${item.id}`} aria-label={item.data.title} />
+                  <span class="more-title">{item.data.title}</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )
+    }
+
+    <Colophon />
+  </Ledger>
+</Base>
+
+<style>
+  .note { display: grid; gap: 1.5rem; }
+
+  .head { display: grid; gap: 0.6rem; padding-inline: 0.25rem; }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .sep { color: var(--faint); }
+
+  .title {
+    font-size: var(--step-2);
+    font-weight: 800;
+    letter-spacing: -0.032em;
+    line-height: 1.12;
+    text-wrap: balance;
+    max-width: 28ch;
+  }
+
+  .lead {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: var(--measure);
+  }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.15rem; }
+
+  .cta {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1.1rem 1.15rem;
+    flex-wrap: wrap;
+  }
+
+  .mark {
+    flex: none;
+    border-radius: var(--r-pill);
+    box-shadow: 0 0 0 1px var(--separator);
+    object-fit: cover;
+  }
+
+  .cta-text {
+    flex: 1;
+    min-width: 12rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .cta-link {
+    flex: none;
+    font-size: var(--step--1);
+    font-weight: 600;
+    background: var(--ink);
+    color: var(--canvas);
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--r-pill);
+    transition: opacity 0.15s var(--ease);
+  }
+
+  .cta-link:hover { opacity: 0.85; }
+
+  @media (pointer: coarse) {
+    .cta-link { display: inline-flex; align-items: center; min-height: 44px; }
+  }
+
+  .more { display: grid; gap: 0.6rem; }
+
+  .more-label {
+    font-size: var(--step--1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    padding-inline: 1rem;
+  }
+
+  .more-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.15rem;
+    transition: background 0.15s var(--ease);
+  }
+
+  .more-row + .more-row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1.15rem;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  .hit { position: absolute; inset: 0; z-index: 1; }
+
+  .more-row:has(.hit:hover) { background: var(--fill); }
+  .more-row:has(.hit:hover) .chev { transform: translateX(3px); }
+
+  .more-title { flex: 1; font-weight: 600; }
+
+  .chev {
+    flex: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--faint);
+    transition: transform 0.2s var(--ease);
+  }
+</style>

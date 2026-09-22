@@ -1,0 +1,79 @@
+---
+import { links } from "../data/links";
+import { profile } from "../data/profile";
+
+const [user, domain] = profile.email.split("@");
+---
+
+<ul class="rows">
+  <li class="row">
+    <a class="hit" data-user={user} data-domain={domain} href="#" data-mail aria-label="Email" />
+    <span class="label">Email</span>
+    <span class="value">{user}<span aria-hidden="true">&#64;</span>{domain}</span>
+    <span class="chev" aria-hidden="true">›</span>
+  </li>
+  {
+    links.map((link) => (
+      <li class="row">
+        <a class="hit" href={link.href} rel="me noopener noreferrer" target="_blank" aria-label={link.label} />
+        <span class="label">{link.label}</span>
+        <span class="value">{link.handle}</span>
+        <span class="chev" aria-hidden="true">›</span>
+      </li>
+    ))
+  }
+</ul>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    document.querySelectorAll<HTMLAnchorElement>("a[data-mail]").forEach((el) => {
+      const { user, domain } = el.dataset;
+      if (user && domain) el.href = `mailto:${user}@${domain}`;
+    });
+  });
+</script>
+
+<style>
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.15rem;
+    transition: background 0.15s var(--ease);
+  }
+
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1.15rem;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  .hit { position: absolute; inset: 0; z-index: 1; }
+
+  .row:has(.hit:hover),
+  .row:has(.hit:focus-visible) { background: var(--fill); }
+  .row:has(.hit:hover) .chev { transform: translateX(3px); }
+  .row:has(.hit:focus-visible) { outline: 2.5px solid var(--ink); outline-offset: -3px; border-radius: var(--r-sm); }
+
+  .label { font-size: var(--step-0); font-weight: 600; }
+
+  .value {
+    margin-left: auto;
+    color: var(--muted);
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .chev {
+    flex: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--faint);
+    transition: transform 0.2s var(--ease);
+  }
+</style>

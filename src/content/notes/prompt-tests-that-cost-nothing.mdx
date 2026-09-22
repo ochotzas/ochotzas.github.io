@@ -1,0 +1,92 @@
+---
+title: "Prompt Tests That Cost Nothing"
+summary: "PromptKit 1.0 is out: prompts as files, a linter that finds the typo before your invoice does, and eval suites that run in CI with no API key and no bill."
+published: 2026-08-15
+tags: ["llm", "python", "tooling", "promptkit"]
+draft: false
+---
+
+I wrote a while back that [prompts belong in version control](/notes/prompts-belong-in-version-control). The tool I was building while I said it is now at 1.0, stable, and on PyPI:
+
+```bash
+pip install 'promptkit-core[openai]'
+```
+
+It is called [PromptKit](https://promptkit-core.ochotzas.com/), and it does one thing: it treats a prompt like the dependency it already is.
+
+## The typo problem
+
+Here is the case for the whole library in eight lines. You fat-finger a variable — `prodcut` in the template, `product` in the schema. An f-string ships that to production and you find out from a support ticket.
+
+```console
+$ promptkit lint support_reply.yaml
+support_reply
+  PK001 'prodcut' is used but not declared (prodcut)
+  PK002 'product' is declared but never used (product)
+
+2 finding(s)
+```
+
+Exit code 1, so CI stops. Nine rules, all with codes, `--strict` and `--format json` for the pipeline.
+
+## The rest of the loop is offline
+
+Nothing above touched the network, and neither does anything below. Rendering, composition, validation and cost estimation all work with no provider SDK and no key — the base install ships neither.
+
+```console
+$ promptkit render support_reply.yaml --set product=Acme --messages
+system
+You are a support agent for Acme.
+Answer in plain language. Prefer short sentences.
+
+user
+Customer wrote: placeholder
+
+$ promptkit cost support_reply.yaml --model gpt-4o-mini
+support_reply with gpt-4o-mini
+Input tokens: 21 (exact)
+Output tokens: 500 (assumed)
+Estimated cost: $0.000303
+```
+
+Anything you leave out is filled with a placeholder, so a prompt is renderable and priceable before you have real inputs. And when a number is a guess, it says so — `Usage.estimated` is on the object too, so a cost report can never quietly lie to you.
+
+## Evals that run for free
+
+This is the part I use most. Put a suite next to the prompt:
+
+```yaml
+cases:
+  - name: mentions_the_product
+    inputs:
+      product: Acme Cloud
+      message: My invoice looks wrong.
+    assert:
+      - contains: Acme Cloud
+      - max_tokens: 400
+```
+
+`contains`, `not_contains`, `regex`, `equals`, `is_json`, `json_schema`, `max_latency`, `max_cost`, `max_tokens`, and an LLM `judge` for the things a regex genuinely cannot express.
+
+Evals call real models, which costs money and is not repeatable — the usual reason nobody runs them in CI. So record the responses once:
+
+```bash
+promptkit test greet.yaml --record   # calls the provider, saves the responses
+promptkit test greet.yaml            # replays them, offline and free
+```
+
+The cassette lands next to the suite. Commit it, and your prompt tests run on every pull request with no API key and no bill. Change the prompt and the recording invalidates itself, with an error that tells you to re-record.
+
+## Identity that means something
+
+A prompt is identified by a fingerprint over its messages, schemas and resolved includes — not by a `version:` field someone forgot to bump. Edit a shared partial and every prompt that includes it changes fingerprint, which is the only way caching is ever correct.
+
+## What it is not
+
+Not an agent framework. Tool calling, agent loops, memory and RAG are permanently out of scope — a boundary, not a gap. Nothing traps you either: `engine.client` is the real SDK client and `completion.raw` the real provider response, so dropping down is one attribute away.
+
+OpenAI, Anthropic, Ollama and anything OpenAI-compatible, Python 3.10 to 3.13, mypy strict, MIT.
+
+[Docs](https://promptkit-core.ochotzas.com/) · [Getting started](https://promptkit-core.ochotzas.com/getting-started/) · [GitHub](https://github.com/ochotzas/promptkit-core)
+
+If it saves you a debugging session, a star helps other people find it.

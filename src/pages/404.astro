@@ -1,0 +1,124 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import Ledger from "../components/Ledger.astro";
+import Card from "../components/Card.astro";
+import Section from "../components/Section.astro";
+import NoteList from "../components/NoteList.astro";
+import Colophon from "../components/Colophon.astro";
+
+const notes = (await getCollection("notes", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.published.valueOf() - a.data.published.valueOf(),
+);
+
+const index = notes.map((note) => ({
+  href: `/notes/${note.id}`,
+  slug: note.id.replaceAll("-", " "),
+  title: note.data.title,
+}));
+
+const bill = "/notes/the-prefix-match-that-tripled-the-bill";
+---
+
+<Base title="Lost" description="This page does not exist, and never especially did." noindex>
+  <Ledger>
+    <Card>
+      <div class="void">
+        <p class="code">404</p>
+        <p class="msg">
+          <span data-miss hidden>Resolved <code data-path></code> to nothing.</span><span data-nopath>Nothing at this address.</span>{" "}Unlike <a href={bill}>the prefix match</a>, this lookup cost nothing.
+        </p>
+        <a class="cta" href="/">Back Home</a>
+      </div>
+    </Card>
+
+    <div data-suggest data-index={JSON.stringify(index)} hidden>
+      <Section title="Did You Mean"><NoteList notes={notes} /></Section>
+    </div>
+
+    <div data-recent>
+      <Section title="Stuff I Wrote Lately" href="/notes"><NoteList notes={notes.slice(0, 3)} /></Section>
+    </div>
+
+    <Colophon />
+  </Ledger>
+</Base>
+
+<script>
+  import Fuse from "fuse.js";
+
+  type Entry = { href: string; slug: string; title: string };
+
+  document.addEventListener("astro:page-load", () => {
+    const suggest = document.querySelector<HTMLElement>("[data-suggest]");
+    const recent = document.querySelector<HTMLElement>("[data-recent]");
+    if (!suggest || !recent) return;
+
+    const path = decodeURIComponent(location.pathname);
+    const shown = document.querySelector<HTMLElement>("[data-path]")!;
+    shown.textContent = path.length > 28 ? `${path.slice(0, 16)}…${path.slice(-10)}` : path;
+    shown.title = path;
+    document.querySelector<HTMLElement>("[data-miss]")!.hidden = false;
+    document.querySelector<HTMLElement>("[data-nopath]")!.hidden = true;
+
+    const query = path
+      .replace(/^\/(notes\/?)?/, "")
+      .replace(/\.html?$|\/$/g, "")
+      .replace(/[-_/.]+/g, " ")
+      .trim();
+    if (!query) return;
+
+    const entries: Entry[] = JSON.parse(suggest.dataset.index ?? "[]");
+    const fuse = new Fuse(entries, {
+      keys: ["slug", "title"],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeScore: true,
+    });
+    const hits = fuse.search(query, { limit: 2 }).map((hit) => hit.item.href);
+    if (hits.length === 0) return;
+
+    const list = suggest.querySelector("ul")!;
+    const rows = new Map(
+      [...list.querySelectorAll("li")].map((row) => [row.querySelector("a")?.getAttribute("href"), row]),
+    );
+    list.replaceChildren(...hits.map((href) => rows.get(href)!));
+    suggest.hidden = false;
+    recent.hidden = true;
+  });
+</script>
+
+<style>
+  .void { padding: clamp(2.5rem, 1rem + 6vw, 4.5rem) 1.5rem; text-align: center; }
+
+  .code {
+    font-size: var(--step-3);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .msg { margin-top: 0.6rem; color: var(--muted); max-width: var(--measure); margin-inline: auto; }
+
+  .msg code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .msg a { color: var(--ink); text-decoration: underline; text-underline-offset: 0.18em; }
+
+  .cta {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-weight: 600;
+    background: var(--ink);
+    color: var(--canvas);
+    padding: 0.6rem 1.3rem;
+    border-radius: var(--r-pill);
+  }
+
+  .cta:hover { opacity: 0.85; }
+</style>

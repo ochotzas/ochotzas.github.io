@@ -1,0 +1,80 @@
+---
+title: "Prompts Belong In Version Control"
+summary: "A prompt is not a string. It's a dependency with a price tag, and it belongs somewhere you can review it, diff it and roll it back."
+published: 2026-01-27
+updated: 2026-09-17
+tags: ["llm", "python", "tooling"]
+draft: false
+---
+
+At some point every LLM codebase arrives at the same place: a file called `prompts.py` with a few thousand characters of triple-quoted English in it, and nobody willing to touch it.
+
+The problem isn't the size. It's that a prompt has every property of a dependency and none of the tooling.
+
+## What a prompt actually is
+
+Change one sentence and behaviour shifts across the whole app. Cost changes. Latency changes. But because it's typed as `str`, none of your tools care:
+
+- The reviewer sees a diff of prose with no way to tell what broke.
+- The type checker is satisfied. It's a string. Strings are fine.
+- Nothing tells you the edit added 400 tokens to every single call.
+- Rolling back means finding the commit where it still worked.
+
+We'd never ship a database schema this way. We ship prompts this way constantly.
+
+## The f-string is the bug
+
+Here is the shape of it, and it is in every codebase I have seen:
+
+```python
+prompt = f"""You are a support agent for {product}. Be concise.
+
+Customer wrote: {message}
+"""
+if order_id:
+    prompt += f"Order: {order_id}"
+```
+
+Three things are wrong and none of them will fail a build. The system instruction and the user's message are one undifferentiated blob, so the model gets no role separation. The conditional means the prompt you review is never the prompt that ships. And if you type `{prodcut}`, Python raises at runtime — in the branch you didn't exercise, at the worst possible moment.
+
+## Move them out
+
+The fix is boring, which is why it works. Put prompts in their own files, give them typed inputs, and let the tooling see them:
+
+```yaml
+name: support_reply
+description: Support reply, house style
+messages:
+  - role: system
+    template: |
+      You are a support agent for {{ product }}.
+      Answer in plain language. Prefer short sentences.
+  - role: user
+    template: |
+      Customer wrote: {{ message }}
+input_schema:
+  product: str
+  message: str
+```
+
+Now the roles are real. The inputs have types. A rename breaks a lint step instead of production. The diff in the pull request says a prompt changed, not that a Python file changed — and a reviewer who is good at the copy but not at Python can read it.
+
+And because the template is data rather than control flow, you can count its tokens and price a run before you make it.
+
+That last one surprised me most. Being able to run `promptkit cost support_reply.yaml --model gpt-4o-mini` and see the number *before* deploying changed how I write them — you optimise what you can see, and until it's a file, you can't see anything.
+
+## The objection
+
+"It's indirection. Now the prompt isn't next to the code that uses it."
+
+True, and it's the same trade you already accepted for SQL migrations, for i18n strings, for infrastructure. You give up locality and you get review, diffing, validation and tests. For anything that changes behaviour when you edit it, that trade has never once been the wrong way round.
+
+## The actual rule
+
+If something changes your system's behaviour when you edit it, it's code. Treat it like code.
+
+Prompts qualify. They've qualified the whole time.
+
+---
+
+I built [PromptKit](https://promptkit-core.ochotzas.com/) to make this the path of least resistance in Python: prompt files, typed inputs, a linter, and evals that run in CI for free. There's a [walkthrough](/notes/prompt-tests-that-cost-nothing) if you want to see it work.

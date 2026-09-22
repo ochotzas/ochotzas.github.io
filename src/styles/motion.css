@@ -1,0 +1,95 @@
+html { overflow-x: clip; }
+
+::view-transition-group(header),
+::view-transition-group(tabbar) { animation: none; }
+
+::view-transition-old(header),
+::view-transition-new(header),
+::view-transition-old(tabbar),
+::view-transition-new(tabbar) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(root) {
+    animation-duration: 340ms;
+    animation-timing-function: var(--ease);
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 340ms;
+    animation-timing-function: var(--ease);
+    animation-fill-mode: both;
+    backface-visibility: hidden;
+  }
+
+  [data-astro-transition="forward"]::view-transition-new(root) {
+    z-index: 2;
+    animation-name: slide-from-right;
+  }
+
+  [data-astro-transition="forward"]::view-transition-old(root) {
+    z-index: 1;
+    animation-name: recede-left;
+  }
+
+  [data-astro-transition="back"]::view-transition-old(root) {
+    z-index: 2;
+    animation-name: slide-to-right;
+  }
+
+  [data-astro-transition="back"]::view-transition-new(root) {
+    z-index: 1;
+    animation-name: advance-from-left;
+  }
+}
+
+@keyframes slide-from-right {
+  from { transform: translate3d(100%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes recede-left {
+  from { transform: translate3d(0, 0, 0); opacity: 1; }
+  to { transform: translate3d(-22%, 0, 0); opacity: 0.6; }
+}
+
+@keyframes slide-to-right {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(100%, 0, 0); }
+}
+
+@keyframes advance-from-left {
+  from { transform: translate3d(-22%, 0, 0); opacity: 0.6; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+:root.theme-switching,
+:root.theme-switching *,
+:root.theme-switching *::before,
+:root.theme-switching *::after {
+  transition:
+    background-color 320ms var(--ease),
+    color 320ms var(--ease),
+    border-color 320ms var(--ease),
+    box-shadow 320ms var(--ease),
+    fill 320ms var(--ease),
+    stroke 320ms var(--ease) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root.theme-switching,
+  :root.theme-switching *,
+  :root.theme-switching *::before,
+  :root.theme-switching *::after {
+    transition: none !important;
+  }
+}

@@ -1,0 +1,66 @@
+---
+import Card from "./Card.astro";
+
+interface Props {
+  id?: string;
+  title: string;
+  href?: string;
+  linkLabel?: string;
+  flush?: boolean;
+}
+const { id, title, href, linkLabel = "See all", flush = false } = Astro.props;
+---
+
+<section class="section" id={id}>
+  <div class="head">
+    <h2 class="label">{title}</h2>
+    {href && <a class="more" href={href}>{linkLabel} <span aria-hidden="true">›</span></a>}
+  </div>
+  <Card flush={flush}><slot /></Card>
+</section>
+
+<style>
+  .section {
+    display: grid;
+    gap: 0.6rem;
+    scroll-margin-top: 4.5rem;
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-inline: 1rem;
+  }
+
+  .label {
+    font-size: var(--step--1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+  }
+
+  .more {
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.4rem 0.6rem;
+    margin: -0.4rem -0.6rem;
+    border-radius: var(--r-pill);
+  }
+
+  @media (pointer: coarse) {
+    .more {
+      min-height: 44px;
+      padding-inline: 0.75rem;
+      margin-inline: -0.75rem;
+    }
+  }
+
+  .more:hover { color: var(--ink); }
+</style>
